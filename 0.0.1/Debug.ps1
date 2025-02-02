@@ -1,16 +1,22 @@
-Import-Module "$($PSScriptRoot)\SPS-GetChildItem.psd1" -Force
+$PSD1File = Get-ChildItem -Path "$($PSScriptRoot)\*.psd1" -ErrorAction SilentlyContinue
+Import-Module $PSD1File.FullName -Force
+
 # Set the most constrained mode
 Set-StrictMode -Version Latest
+
 # Set the error preference
 $ErrorActionPreference = 'Stop'
+
 # Set the verbose preference in order to get some insights
 $VerbosePreference = 'Continue'
+
+# Set the stopwatch
 $DebugStopWatch = [System.Diagnostics.Stopwatch]::new()
 $DebugStopWatch.Start()
 
-# Set the Verbose color
+# Set the Verbose color as something different than the warning color (yellow)
 if (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue) {
-    $PSStyle.Formatting.Verbose = $PSStyle.Foreground.Cyan
+    $PSStyle.Formatting.Verbose = $PSStyle.Foreground.BrightCyan
 }Else{
     $Host.PrivateData.VerboseForegroundColor = 'Cyan'
 }
@@ -49,9 +55,9 @@ Write-Host "Standard Get-ChildItem : " -NoNewLine -ForegroundColor Blue
 Write-Host "$($NativeMeasure.TotalSeconds) s - Count : $($ResultNative.Count)" -ForegroundColor Green
 Write-Host ''
 Write-Host "Performance gain in percent (as string) : " -NoNewLine -ForegroundColor Blue
-Write-Host "-$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasureQuick.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
+Write-Host "$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasureQuick.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
 Write-Host "Performance gain in percent : " -NoNewLine -ForegroundColor Blue
-Write-Host "-$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasure.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
+Write-Host "$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasure.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
 
 # git add --all;Git commit -a -am 'Initial Commit';Git push
 
