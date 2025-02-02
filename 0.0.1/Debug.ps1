@@ -5,7 +5,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 # Set the verbose preference in order to get some insights
 $VerbosePreference = 'Continue'
-$DebugStart = Get-Date
+$DebugStopWatch = [System.Diagnostics.Stopwatch]::new()
+$DebugStopWatch.Start()
+
+# Set the Verbose color
+if (Get-Variable -Name PSStyle -ErrorAction SilentlyContinue) {
+    $PSStyle.Formatting.Verbose = $PSStyle.Foreground.Cyan
+}Else{
+    $Host.PrivateData.VerboseForegroundColor = 'Cyan'
+}
 
 ############################
 # Test your functions here #
@@ -15,35 +23,44 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $VerbosePreference = 'Continue'
 
-$Path = 'C:\Windows'
+$Path = 'C:\'
+$StopWatch = [System.Diagnostics.Stopwatch]::new()
 
-$SPSMeasureQuick = Measure-Command -Expression {
-    $ResultSPSQuick = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue
-    $Null = $ResultSPSQuick
-}
+$StopWatch.Start()
+$ResultSPSQuick = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue
+$StopWatch.Stop()
+$SPSMeasureQuick = $StopWatch.Elapsed
 
-$SPSMeasure = Measure-Command -Expression {
-    $ResultSPS = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -AsFileInfo
-    $Null = $ResultSPS
-}
-$StandardMeasure = Measure-Command -Expression {
-    $ResultNative = Get-ChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -File
-    $Null = $ResultNative
-}
+$StopWatch.Restart()
+$ResultSPS = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -AsFileInfo
+$StopWatch.Stop()
+$SPSMeasure = $StopWatch.Elapsed
 
-Write-Host "Performance while getting files only"
-Write-Host "SPS-GetChildItem (as string): $($SPSMeasureQuick.TotalSeconds) s - Count : $($ResultSPSQuick.Count)"
-Write-Host "SPS-GetChildItem : $($SPSMeasure.TotalSeconds) s - Count : $($ResultSPS.Count)"
-Write-Host "Standard Get-ChildItem : $($StandardMeasure.TotalSeconds) s - Count : $($ResultNative.Count)"
+$StopWatch.Restart()
+$ResultNative = Get-ChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -File
+$StopWatch.Stop()
+$NativeMeasure = $StopWatch.Elapsed
+
+Write-Host "SPS-GetChildItem (as string): " -NoNewLine -ForegroundColor Blue
+Write-Host "$($SPSMeasureQuick.TotalSeconds) s - Count : $($ResultSPSQuick.Count)" -ForegroundColor Green
+Write-Host "SPS-GetChildItem : " -NoNewLine -ForegroundColor Blue
+Write-Host "$($SPSMeasure.TotalSeconds) s - Count : $($ResultSPS.Count)" -ForegroundColor Green
+Write-Host "Standard Get-ChildItem : " -NoNewLine -ForegroundColor Blue
+Write-Host "$($NativeMeasure.TotalSeconds) s - Count : $($ResultNative.Count)" -ForegroundColor Green
+Write-Host ''
+Write-Host "Performance gain in percent (as string) : " -NoNewLine -ForegroundColor Blue
+Write-Host "-$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasureQuick.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
+Write-Host "Performance gain in percent : " -NoNewLine -ForegroundColor Blue
+Write-Host "-$([math]::Round((($NativeMeasure.TotalSeconds - $SPSMeasure.TotalSeconds) / $NativeMeasure.TotalSeconds) * 100, 2)) %" -ForegroundColor Green
 
 # git add --all;Git commit -a -am 'Initial Commit';Git push
 
 ##################################
 # End of the tests show metrics #
 ##################################
-
 Write-Host '------------------- Ending script -------------------' -ForegroundColor Yellow
-$TimeSpentInDebugScript = New-TimeSpan -Start $DebugStart -Verbose:$False -ErrorAction SilentlyContinue
+$DebugStopWatch.Stop()
+$TimeSpentInDebugScript = $DebugStopWatch.Elapsed
 $TimeUnits = [ordered]@{TotalDays = "$($TimeSpentInDebugScript.TotalDays) D.";TotalHours = "$($TimeSpentInDebugScript.TotalHours) h.";TotalMinutes = "$($TimeSpentInDebugScript.TotalMinutes) min.";TotalSeconds = "$($TimeSpentInDebugScript.TotalSeconds) s.";TotalMilliseconds = "$($TimeSpentInDebugScript.TotalMilliseconds) ms."}
 foreach ($Unit in $TimeUnits.GetEnumerator()) {if ($TimeSpentInDebugScript.$($Unit.Key) -gt 1) {$TimeSpentString = $Unit.Value;break}}
 if (-not $TimeSpentString) {$TimeSpentString = "$($TimeSpentInDebugScript.Ticks) Ticks"}

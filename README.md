@@ -6,11 +6,17 @@ This module provides a quicker way to get file child items in a given directory.
 ## Awaited performance gain
 The performance gain is expected to be significant when the number of files in the directory is high.
 
-The performance gain is less significant when you use the `-AsFileInfo` parameter.
+When not using `-AsFileInfo` I measured an average **70%** performance gain.
+
+When using `-AsFileInfo` the performance gain will depend on the number of files in the directory and the size of the files. The performance gain is expected to be higher when the files are small. I measured between **4%** and **60%** performance gain.
+
+The performance gain is less significant when you use the `-AsFileInfo` parameter but the output will be `[System.IO.FileInfo]` which is what `Get-ChildItem` returns.
 
 > [!IMPORTANT] 
 > The command will not return directories.
 
+> [!NOTE]  
+> Performance of `Get-ChildItem` seems to be fluctuating for the same directory. I recommend testing the performance of this module in your environment.
 
 ### Syntax
 ```powershell
