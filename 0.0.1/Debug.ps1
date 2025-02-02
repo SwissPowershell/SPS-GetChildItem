@@ -17,8 +17,13 @@ $VerbosePreference = 'Continue'
 
 $Path = 'C:\Windows'
 
+$SPSMeasureQuick = Measure-Command -Expression {
+    $ResultSPSQuick = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue
+    $Null = $ResultSPSQuick
+}
+
 $SPSMeasure = Measure-Command -Expression {
-    $ResultSPS = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -FileInfo
+    $ResultSPS = Get-SPSChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue -AsFileInfo
     $Null = $ResultSPS
 }
 $StandardMeasure = Measure-Command -Expression {
@@ -26,6 +31,8 @@ $StandardMeasure = Measure-Command -Expression {
     $Null = $ResultNative
 }
 
+Write-Host "Performance while getting files only"
+Write-Host "SPS-GetChildItem (as string): $($SPSMeasureQuick.TotalSeconds) s - Count : $($ResultSPSQuick.Count)"
 Write-Host "SPS-GetChildItem : $($SPSMeasure.TotalSeconds) s - Count : $($ResultSPS.Count)"
 Write-Host "Standard Get-ChildItem : $($StandardMeasure.TotalSeconds) s - Count : $($ResultNative.Count)"
 

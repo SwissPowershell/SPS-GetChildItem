@@ -1,42 +1,74 @@
 Function Get-SPSChildItem {
     [CmdLetBinding(DefaultParameterSetName='ByPath')]
     Param(
-        [Parameter(Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True,ParameterSetName='ByPath', Position=0)]
-        [Parameter(Mandatory=$False,ParameterSetName='ByCurrent', Position=0)]
-        [String] 
-            ${Path},
-        [Parameter(Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True,ParameterSetName='ByLiteralPath', Position=0)]
-        [String] 
-            ${LiteralPath},
-        [String]
-            ${Filter} = '*',
-        [String[]]
-            ${Include},
-        [String[]] 
-            ${Exclude},
-        [Switch]
-            ${Recurse},
-        [UInt] 
-            ${Depth} = [int32]::MaxValue,
-        [Switch] 
-            ${Name},
-        [Switch]
-            ${Hidden},
-        [Switch]
-            ${FileInfo}
+        [Parameter(
+            Position=0,
+            Mandatory=$True, 
+            ValueFromPipeline=$True, 
+            ValueFromPipelineByPropertyName=$True,
+            ParameterSetName='ByPath',
+            HelpMessage='The path to the directory to list the files from.'
+        )]
+        [Parameter(
+            Position=0,
+            Mandatory=$False,
+            ParameterSetName='ByCurrent'
+        )]
+        [String] ${Path},
+
+        [Parameter(
+            Position=0,
+            Mandatory=$True, 
+            ValueFromPipeline=$True, 
+            ValueFromPipelineByPropertyName=$True,
+            ParameterSetName='ByLiteralPath',
+            HelpMessage='The LiteralPath to the directory to list the files from.'
+        )]
+        [String] ${LiteralPath},
+
+        [Parameter(
+            Position=1,
+            Mandatory=$False,
+            HelpMessage='The filter to apply to the files.'
+        )]
+        [String] ${Filter} = '*',
+
+        [Parameter(
+            Mandatory=$False,
+            HelpMessage='Recurse into subdirectories.'
+        )]
+        [Switch] ${Recurse},
+
+        [Parameter(
+            Mandatory=$False,
+            HelpMessage='The maximum depth of recursion.'
+        )]
+        [UInt] ${Depth} = [int32]::MaxValue,
+
+        [Parameter(
+            Mandatory=$False,
+            HelpMessage='Include hidden files.'
+        )]
+        [Switch] ${Hidden},
+
+        [Parameter(
+            Mandatory=$False,
+            HelpMessage='Return [System.IO.FileInfo] instead of strings.'
+        )]
+        [Switch] ${AsFileInfo}
     )
     BEGIN{
-        Write-Verbose 'Starting Get-SPSChildItem'
-        # if the path is not specified, use the current directory
-        if (-not $Path) {
-            $Path = Get-Location
+        Write-Verbose "Starting $($MyInvocation.MyCommand)"
+        # if the path is not specified (parameterSetName='ByCurrent'), use the current directory
+        if ($PSCmdlet.ParameterSetName -eq 'ByCurrent') {
+            $LiteralPath = Get-Location
         }
         # Resolve the path
         if ($PSCmdlet.ParameterSetName -eq 'ByPath') {
             $LiteralPath = Resolve-Path -Path $Path
         }
         $EnumerationOptions = [System.IO.EnumerationOptions]::new()
-        if ($Hidden) {
+        if ($Hidden -eq $True) {
             $EnumerationOptions.AttributesToSkip = 0
         }Else{
             $EnumerationOptions.AttributesToSkip = [System.IO.FileAttributes]::Hidden
@@ -51,35 +83,39 @@ Function Get-SPSChildItem {
         $EnumerationOptions.MatchCasing = [System.IO.MatchCasing]::PlatformDefault
         $EnumerationOptions.MatchType = [System.IO.MatchType]::Simple
         $EnumerationOptions.MaxRecursionDepth = $Depth
-        $EnumerationOptions.RecurseSubdirectories = $Recurse
+        $EnumerationOptions.RecurseSubdirectories = $Recurse -eq $True
         $EnumerationOptions.ReturnSpecialDirectories = $False
     }
     PROCESS {
         Write-Verbose "Processing path: $($LiteralPath)"
-        # Get the child items using the dotnet method
+        # Get the child items using the dotnet method.
         try {
-            if ($FileInfo) {
-                # [System.IO.Directory]::GetFiles($LiteralPath, $Filter,$EnumerationOptions) | ForEach-Object {
-                #     
-                # }
+            if ($AsFileInfo -eq $True) {
+                # Will return a full file info object instead of just the path string, this is slower.
                 ForEach ($File in $([System.IO.Directory]::GetFiles($LiteralPath, $Filter,$EnumerationOptions))) {
-                    [System.IO.FileInfo]::new($File)
+                    Try {
+                        [System.IO.FileInfo]::new($File)
+                    }Catch{
+                        Write-Warning "Unable to read fileinfo for '$($File)': $($_.Exception.Message)"
+                    }
+                    
                 }
             }Else{
                 [System.IO.Directory]::GetFiles($LiteralPath, $Filter,$EnumerationOptions) 
             }
         } catch {
             $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
-                "Get-SPSChildItem: $($_.Exception.ErrorRecord.ToString().Replace('Exception calling "GetFiles" with "3" argument(s): "','').replace('"',''))",
-                'Get-SPSChildItem',
+                "$($MyInvocation.MyCommand): $($_.Exception.ErrorRecord.ToString().Replace('Exception calling "GetFiles" with "3" argument(s): "','').replace('"',''))",
+                "$($MyInvocation.MyCommand)",
                 [System.Management.Automation.ErrorCategory]::PermissionDenied,
-                # [System.Management.Automation.ErrorCategory]::NotSpecified,
                 $null
             )
             throw $ErrorRecord
         }  
+        
+        
     }
     END {
-        Write-Verbose 'Ending Get-SPSChildItem'
+        Write-Verbose "Ending $($MyInvocation.MyCommand)"
     }
 }
